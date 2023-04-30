@@ -20,7 +20,7 @@ C++ Standart - ISO C++17,
 C Standart - Legacy MSVC,
 Preprocessor arguments: CURL_STATICLIB, _CRT_SECURE_NO_WARNINGS, _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
 Symbols: Unicode.
+```
 
 # Additional requirements
 7z.dll (you can take it from your 7-zip folder)
-```
