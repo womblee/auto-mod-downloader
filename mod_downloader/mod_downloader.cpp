@@ -324,9 +324,15 @@ int main()
         // Actual game path
         std::filesystem::path actual_path = std::string(game_path + "\\steamapps\\common\\Dying Light");
 
+        if (!std::filesystem::exists(actual_path))
+            throw_error("Dying Light directory is not available.");
+
         // DW path
         std::filesystem::path dw_path = actual_path;
         dw_path /= "DW";
+
+        if (!std::filesystem::exists(dw_path))
+            throw_error("Dying Light\\DW directory is not available.");
 
         std::cout << "Copying desired datapaks into DW..." << std::endl;
 
