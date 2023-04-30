@@ -134,7 +134,7 @@ std::vector<std::string> split(std::string s, std::string delimiter)
 }
 
 // Deep clean
-void deep_clean()
+void deep_clean(bool log)
 {
     // Already present?
     std::vector<std::string> bad_ones
@@ -150,6 +150,9 @@ void deep_clean()
         // The odd one's out
         std::filesystem::path to_remove = std::filesystem::current_path();
         to_remove /= loser;
+
+        if (log)
+            std::cout << "* Cleaning " + to_remove.filename().string() + "..." << std::endl;
 
         if (std::filesystem::exists(to_remove)) std::filesystem::is_directory(to_remove) ? std::filesystem::remove_all(to_remove) : std::filesystem::remove(to_remove);
     }
@@ -173,7 +176,7 @@ int main()
         throw_error("Unfortunately, you disagreed.");
   
     // Do a cleaning before downloading anything
-    deep_clean();
+    deep_clean(false);
 
     // Download
     get_bonzo();
@@ -408,10 +411,10 @@ int main()
         // Another deep clean so we don't have our space being eaten
         std::cout << "Cleaning out the mess..." << std::endl;
 
-        deep_clean();
+        deep_clean(true);
 
         // Congratulations
-        throw_error("* Successfull installation! You can now enter the game.", 6);
+        throw_error("= Successfull installation! You can now enter the game.", 6);
     }
     else
     {
