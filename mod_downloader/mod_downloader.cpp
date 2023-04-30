@@ -224,6 +224,10 @@ int main()
             }
         }
 
+        // Safety check
+        if (i == 0)
+            throw_error("Couldn't parse the downloadable files, please consider trying again later.");
+
         // Ask the user
         std::cout << "\nWhich mods would you like to install?" << std::endl;
 
@@ -236,9 +240,12 @@ int main()
 
         std::getline(std::cin, input_numbers);
 
+        // Remove spaces
+        std::remove_if(input_numbers.begin(), input_numbers.end(), isspace);
+
         // Validate to evade trolls
-        if (input_numbers.length() > 1 && !strstr(input_numbers.c_str(), ","))
-            throw_error("If you plan to enter more choices, please add commas");
+        if (input_numbers.length() > 2 && !strstr(input_numbers.c_str(), ","))
+            throw_error("If you plan to enter something big without commas, that won't do.");
 
         // Split
         std::vector<std::string> splitted = split(input_numbers, ",");
@@ -266,6 +273,9 @@ int main()
                 if (itr != splitted.end()) splitted.erase(itr);
             }
         }
+
+        // Newline before messages
+        std::cout << std::endl;
 
         // Steam path variable that we will use
         std::string steam_path;
@@ -343,7 +353,7 @@ int main()
             std::filesystem::path temporary = paks.at(std::atoi(choice.c_str())).path;
             std::filesystem::copy(temporary, dw_path, std::filesystem::copy_options::overwrite_existing);
 
-            std::cout << std::string("Copied " + temporary.string() + " into DW folder") << std::endl;
+            std::cout << std::string("* Copied " + temporary.string() + " into DW folder") << std::endl;
         }
 
         std::cout << "Doing dide_mod setup..." << std::endl;
@@ -394,13 +404,18 @@ int main()
         dide_path /= "dide_mod.ini";
 
         std::filesystem::copy("_placeholder.ini", dide_path, std::filesystem::copy_options::overwrite_existing);
-        
+
         // Another deep clean so we don't have our space being eaten
         std::cout << "Cleaning out the mess..." << std::endl;
 
         deep_clean();
 
         // Congratulations
-        throw_error("Successfull installation!");
+        throw_error("* Successfull installation! You can now enter the game.", 6);
+    }
+    else
+    {
+        // Fail :(
+        throw_error("Failed to download the mod collection.");
     }
 }
