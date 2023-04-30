@@ -7,6 +7,8 @@ Works only for Dying Light on Steam, uses Nest Rushers website for grabbing the 
 
 ![image](https://user-images.githubusercontent.com/52250786/235341071-7f2088c7-69c2-49a8-bc53-6d5d4ab3f088.png)
 
+![image](https://user-images.githubusercontent.com/52250786/235342648-92e62fbe-abf7-4a8e-92bd-adbff04ebb7f.png)
+
 # Sleek
 After the work is done, it leaves absolutely zero mess (of course, since it cleans up all the leftover files)
 
