@@ -25,7 +25,7 @@ This is how my configuration looks like, just a simple example.
 
 ![image](https://user-images.githubusercontent.com/52250786/235478951-bfc81558-ad6f-478d-80c3-d9079f447e2c.png)
 
-Explanation of the downloadable archive structure.
+Explanation of the downloadable .zip archive structure.
 # How to compile
 ```
 NuGet packages: (curl),
