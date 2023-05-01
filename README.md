@@ -1,9 +1,9 @@
 # Comfortable mod loader
-This tool lets you setup your mods with the help of Nest Rushers in 5 seconds, it literally does everything for you.
+This tool lets you setup your mods in a matter of 5 seconds, it literally does everything for you.
 
-Works only for Dying Light, uses Nest Rushers' website for grabbing the mods.
+Works only for Dying Light, uses the website specified in *config.ini* / default nest rushers one for grabbing the mods.
 
-*You don't have to specify any paths or something like that (with steam). This tool automatically finds your game's directory!*
+**You don't have to specify any paths or something like that (with steam). This tool automatically finds your game's directory!**
 
 ![image](https://user-images.githubusercontent.com/52250786/235461989-3c971c1d-7caf-498b-9ff5-e389fd765bf8.png)
 
@@ -13,6 +13,15 @@ Works only for Dying Light, uses Nest Rushers' website for grabbing the mods.
 
 # Sleek
 After the work is done, it leaves absolutely zero mess (of course, since it cleans up all the leftover files)
+
+# How to setup for your own mod collection
+Create ***config.ini*** and modify it however you want.
+```ini
+[Config]
+download_server=https://www.nlog.us/downloads/
+download_file=full_archive.zip
+```
+This is how my configuration looks like, just a simple example.
 
 # How to compile
 ```
