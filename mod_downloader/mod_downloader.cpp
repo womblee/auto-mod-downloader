@@ -163,8 +163,6 @@ void deep_clean(bool log)
     }
 }
 
-using namespace bit7z;
-
 int main()
 {
     // Title
@@ -219,8 +217,8 @@ int main()
     {
         // Attempt
         try {
-            Bit7zLibrary lib{ "7z.dll" };
-            BitArchiveReader reader{ lib, "full_archive.zip", BitFormat::Zip };
+            bit7z::Bit7zLibrary lib{ "7z.dll" };
+            bit7z::BitArchiveReader reader{ lib, download_file, bit7z::BitFormat::Zip };
 
             // Extracting the archive
             reader.extract("out/");
