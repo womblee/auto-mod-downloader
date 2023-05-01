@@ -21,6 +21,7 @@ Create ***config.ini*** and modify it however you want.
 download_server=https://www.nlog.us/downloads/
 download_file=full_archive.zip
 ```
+This is how my configuration looks like, just a simple example.
 
 # How to compile
 ```
