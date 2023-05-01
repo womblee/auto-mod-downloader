@@ -19,6 +19,8 @@
 #include "vdf_parser.hpp"
 #include "ini.hpp"
 
+#define NEWLINE std::cout << std::endl;
+
 // Needed
 bool download_complete = false;
 
@@ -278,77 +280,110 @@ int main()
         }
 
         // Newline before messages
-        std::cout << std::endl;
+        NEWLINE
 
-        // Steam path variable that we will use
-        std::string steam_path;
+        // Ask about the platform
+        std::cout << "Steam or Epic Games? (steam / epic): ";
+        std::string input_platform;
 
-        // Find Dying Light path
-        HKEY h_key = 0;
+        std::getline(std::cin, input_platform);
 
-        std::cout << "Attempting to find game's installation path..." << std::endl;
+        // Choice
+        bool steam = true;
 
-        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"SOFTWARE\\WOW6432Node\\Valve\\Steam", 0, KEY_READ, &h_key) == ERROR_SUCCESS)
+        if (input_platform.find("epic") != std::string::npos) steam = false; 
+
+        // Variable, will be used later
+        std::string game_path;
+        std::string input_path;
+
+        // Steam installation folder detection
+        if (steam)
         {
-            WCHAR szBuffer[512];
-            DWORD dwBufferSize = sizeof(szBuffer);
+            // Steam path variable that we will use
+            std::string steam_path;
 
-            if (ERROR_SUCCESS == RegQueryValueEx(h_key, L"InstallPath", 0, NULL, (LPBYTE)szBuffer, &dwBufferSize))
+            // Find platform path
+            HKEY h_key = 0;
+
+            std::cout << "Attempting to find the game's installation path..." << std::endl;
+
+            // Data
+            if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"SOFTWARE\\WOW6432Node\\Valve\\Steam", 0, KEY_READ, &h_key) == ERROR_SUCCESS)
             {
-                std::wstring little(szBuffer);
-                std::transform(little.begin(), little.end(), std::back_inserter(steam_path), [](wchar_t c)
-                    {
-                        return (char)c;
-                    });
+                WCHAR szBuffer[512];
+                DWORD dwBufferSize = sizeof(szBuffer);
 
-                steam_path = std::string(little.begin(), little.end());
+                if (ERROR_SUCCESS == RegQueryValueEx(h_key, L"InstallPath", 0, NULL, (LPBYTE)szBuffer, &dwBufferSize))
+                {
+                    std::wstring little(szBuffer);
+                    std::transform(little.begin(), little.end(), std::back_inserter(steam_path), [](wchar_t c)
+                        {
+                            return (char)c;
+                        });
+
+                    steam_path = std::string(little.begin(), little.end());
+                }
+
+                RegCloseKey(h_key);
             }
 
-            RegCloseKey(h_key);
-        }
+            if (!std::filesystem::exists(steam_path))
+                throw_error("Couldn't find your steam's installation path.");
 
-        if (!std::filesystem::exists(steam_path))
-            throw_error("Couldn't find your steam's installation path.");
+            // Parse .vdf file
+            std::ifstream main(std::string(steam_path + "\\steamapps\\libraryfolders.vdf"));
 
-        // Game path variable, will be used later
-        std::string game_path;
+            if (main.fail())
+                throw_error("Couldn't check your library's metadata, make sure 'libraryfolders.vdf' exists in your steamapps folder.");
 
-        // Parse .vdf file
-        std::ifstream main(std::string(steam_path + "\\steamapps\\libraryfolders.vdf"));
-        
-        if (main.fail())
-            throw_error("Couldn't check your library's metadata, make sure 'libraryfolders.vdf' exists in your steamapps folder.");
+            auto root = tyti::vdf::read(main);
 
-        auto root = tyti::vdf::read(main);
-
-        for (const auto& child : root.childs)
-        {
-            for (const auto& mini_child : root.childs[child.first].get()->childs)
+            for (const auto& child : root.childs)
             {
-                for (const auto& test : mini_child.second.get()->attribs)
+                for (const auto& mini_child : root.childs[child.first].get()->childs)
                 {
-                    // Dying Light's ID
-                    if (test.first == "239140")
+                    for (const auto& test : mini_child.second.get()->attribs)
                     {
-                        if (root.childs[child.first].get()->attribs.find("path") != root.childs[child.first].get()->attribs.end())
-                            game_path = root.childs[child.first].get()->attribs["path"];
+                        // Dying Light's ID
+                        if (test.first == "239140")
+                        {
+                            if (root.childs[child.first].get()->attribs.find("path") != root.childs[child.first].get()->attribs.end())
+                                game_path = root.childs[child.first].get()->attribs["path"];
+                        }
                     }
                 }
             }
         }
+        else
+        {
+            NEWLINE
+
+            // Ask about the actual path
+            std::cout << "Dying Light's installation folder (ex: C:\\Program Files\\Epic Games\\DyingLight): ";
+            std::getline(std::cin, input_path);
+
+            // Validate
+            if (!std::filesystem::exists(input_path))
+                throw_error("That path unfortunaly doesn't exist, did you specify the path correctly?");
+
+            // Directory or not?
+            if (!std::filesystem::is_directory(input_path))
+                throw_error("The path you specified is not a directory, please double check if you've entered everything correctly.");
+        }
 
         // Actual game path
-        std::filesystem::path actual_path = std::string(game_path + "\\steamapps\\common\\Dying Light");
+        std::filesystem::path actual_path = steam ? game_path + "\\steamapps\\common\\Dying Light" : input_path;
 
         if (!std::filesystem::exists(actual_path))
-            throw_error("Dying Light directory is not available.");
+            throw_error("Unfortunately, Dying Light directory is not available.");
 
         // DW path
         std::filesystem::path dw_path = actual_path;
         dw_path /= "DW";
 
         if (!std::filesystem::exists(dw_path))
-            throw_error("Dying Light\\DW directory is not available.");
+            throw_error("Unfortunately, Dying Light\\DW directory is not available.");
 
         std::cout << "Copying desired datapaks into DW..." << std::endl;
 
