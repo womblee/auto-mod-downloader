@@ -243,9 +243,12 @@ int main()
             {
                 for (const auto& file : std::filesystem::directory_iterator(dir.path()))
                 {
+                    // Ignore certain folders
+                    if (file.path().filename().string().find(".ignore_this") != std::string::npos)
+                        break;
+
                     if (file.is_regular_file() && file.path().extension() == ".pak")
                     {
-                        // Add to collection
                         entry data;
                         data.num = i;
                         data.path = file.path(); // For later
