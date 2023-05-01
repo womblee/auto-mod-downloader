@@ -248,7 +248,7 @@ int main()
 
         // Validate to evade trolls
         if (input_numbers.length() > 2 && !strstr(input_numbers.c_str(), ","))
-            throw_error("If you plan to enter something big without commas, that won't do.");
+            throw_error("If you plan to enter something big without commas, that's probably not the right answer.");
 
         // Split
         std::vector<std::string> splitted = split(input_numbers, ",");
@@ -307,7 +307,7 @@ int main()
             RegCloseKey(h_key);
         }
 
-        if (!strstr(steam_path.c_str(), "Steam"))
+        if (!std::filesystem::exists(steam_path))
             throw_error("Couldn't find your steam's installation path.");
 
         // Game path variable, will be used later
@@ -315,6 +315,9 @@ int main()
 
         // Parse .vdf file
         std::ifstream main(std::string(steam_path + "\\steamapps\\libraryfolders.vdf"));
+        
+        if (main.fail())
+            throw_error("Couldn't check your library's metadata, make sure 'libraryfolders.vdf' exists in your steamapps folder.");
 
         auto root = tyti::vdf::read(main);
 
@@ -352,10 +355,18 @@ int main()
         // Copy the datapak into DW
         for (const auto& choice : splitted)
         {
-            // Copy and output yay
+            // Already existing?
+            std::filesystem::path existing = dw_path;
+            existing /= paks.at(std::atoi(choice.c_str())).path.filename();
+            
+            if (std::filesystem::exists(existing)) std::filesystem::remove(existing);
+
+            // Copy from temporary
             std::filesystem::path temporary = paks.at(std::atoi(choice.c_str())).path;
+
             std::filesystem::copy(temporary, dw_path, std::filesystem::copy_options::overwrite_existing);
 
+            // Output
             std::cout << std::string("* Copied " + temporary.string() + " into DW folder") << std::endl;
         }
 
