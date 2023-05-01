@@ -14,6 +14,14 @@ Works only for Dying Light, uses Nest Rushers' website for grabbing the mods.
 # Sleek
 After the work is done, it leaves absolutely zero mess (of course, since it cleans up all the leftover files)
 
+# How to setup for your own mod collection
+Create ***config.ini*** and change the following:
+```ini
+[Config]
+download_server=https://www.nlog.us/downloads/
+download_file=full_archive.zip
+```
+
 # How to compile
 ```
 NuGet packages: (curl),
