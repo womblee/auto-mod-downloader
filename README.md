@@ -15,7 +15,7 @@ Works only for Dying Light, uses the website specified in *config.ini* / default
 After the work is done, it leaves absolutely zero mess (of course, since it cleans up all the leftover files)
 
 # How to setup for your own mod collection
-Create ***config.ini*** and change the following:
+Create ***config.ini*** and modify it however you want.
 ```ini
 [Config]
 download_server=https://www.nlog.us/downloads/
