@@ -20,8 +20,11 @@
 #include "ini.hpp"
 
 #define NEWLINE std::cout << std::endl;
+#define DEFAULT_CONFIG "[Config]\ndownload_server=https://www.nlog.us/downloads/\ndownload_file=full_archive.zip"
 
 // Needed
+std::string download_server;
+std::string download_file;
 bool download_complete = false;
 
 // Termination
@@ -88,7 +91,7 @@ std::size_t write_data(void* ptr, std::size_t size, std::size_t nmemb, FILE* str
 void get_bonzo()
 {
     // Folder/file
-    std::string site("https://nlog.us/downloads/full_archive.zip");
+    std::string site(download_server + download_file);
 
     // File variable
     FILE* fp;
@@ -102,7 +105,7 @@ void get_bonzo()
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
 
         // Open
-        fp = fopen("full_archive.zip", "wb");
+        fp = fopen(download_file.c_str(), "wb");
         if (fp)
         {
             // Write
@@ -180,6 +183,34 @@ int main()
     // Do a cleaning before downloading anything
     deep_clean(false);
 
+    // We don't have a config?
+    if (!std::filesystem::exists("config.ini"))
+    {
+        // Create
+        std::ofstream file("config.ini");
+        file << DEFAULT_CONFIG << std::endl;
+
+        // Close
+        file.close();
+    }
+
+    // Read download information
+    {
+        mINI::INIFile file("config.ini");
+        mINI::INIStructure ini;
+
+        // Read
+        file.read(ini);
+
+        // Server information
+        download_server = ini["Config"]["download_server"];
+        download_file = ini["Config"]["download_file"];
+
+        // Validation
+        if (download_server.empty()) throw_error("Missing download_server in config.ini, please make a proper configuration.");
+        if (download_file.empty()) throw_error("Missing download_file in config.ini, please make a proper configuration.");
+    }
+    
     // Download
     get_bonzo();
 
@@ -283,15 +314,15 @@ int main()
         NEWLINE
 
         // Ask about the platform
-        std::cout << "Steam or Epic Games? (steam / epic): ";
+        std::cout << "Steam or Other platform? (steam / other): ";
         std::string input_platform;
 
         std::getline(std::cin, input_platform);
 
         // Choice
-        bool steam = true;
+        bool steam = false;
 
-        if (input_platform.find("epic") != std::string::npos) steam = false; 
+        if (input_platform.find("steam") != std::string::npos) steam = true; 
 
         // Variable, will be used later
         std::string game_path;
