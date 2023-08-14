@@ -3,7 +3,7 @@ This tool lets you setup your mods in a matter of 5 seconds, it literally does e
 
 Works only for Dying Light, uses the website specified in *config.ini* / default nest rushers one for grabbing the mods.
 
-**You don't have to specify any paths or something like that (with steam). This tool automatically finds your game's directory!**
+**You don't have to specify any paths or something like that (with steam only, manual input for other). This tool automatically finds your game's directory!**
 
 ![image](https://user-images.githubusercontent.com/52250786/235461989-3c971c1d-7caf-498b-9ff5-e389fd765bf8.png)
 
@@ -20,6 +20,7 @@ Create ***config.ini*** and modify it however you want.
 [Config]
 download_server=https://www.nlog.us/downloads/
 download_file=full_archive.zip
+download_copyright=Nest Rushers Discord
 ```
 This is how my configuration looks like, just a simple example.
 
@@ -28,7 +29,7 @@ This is how my configuration looks like, just a simple example.
 Explanation of the downloadable .zip archive structure.
 # How to compile
 ```
-NuGet packages: (curl),
+NuGet packages: (curlpp),
 Release x64,
 Dynamic Link Library (.dll),
 Visual Studio 2022 (v143),
@@ -39,4 +40,4 @@ Symbols: Unicode.
 ```
 
 # Additional requirements
-7z.dll (you can take it from your 7-zip folder)
+7z.dll (you can take it from your 7-zip's folder)
