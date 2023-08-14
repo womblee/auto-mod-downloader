@@ -20,9 +20,10 @@
 #include "ini.hpp"
 
 #define NEWLINE std::cout << std::endl;
-#define DEFAULT_CONFIG "[Config]\ndownload_server=https://www.nlog.us/downloads/\ndownload_file=full_archive.zip"
+#define DEFAULT_CONFIG "[Config]\ndownload_server=https://www.nlog.us/downloads/\ndownload_file=full_archive.zip\ndownload_copyright=Nest Rushers Discord"
 
 // Needed
+std::string download_copyright;
 std::string download_server;
 std::string download_file;
 bool download_complete = false;
@@ -156,20 +157,45 @@ void deep_clean(bool log)
         std::filesystem::path to_remove = std::filesystem::current_path();
         to_remove /= loser;
 
-        if (log)
-            std::cout << "* Cleaning " + to_remove.filename().string() + "..." << std::endl;
+        if (std::filesystem::exists(to_remove))
+        {
+            if (log)
+                std::cout << "* Cleaning " + to_remove.filename().string() + "..." << std::endl;
 
-        if (std::filesystem::exists(to_remove)) std::filesystem::is_directory(to_remove) ? std::filesystem::remove_all(to_remove) : std::filesystem::remove(to_remove);
+            std::filesystem::is_directory(to_remove) ? std::filesystem::remove_all(to_remove) : std::filesystem::remove(to_remove);
+        }
     }
+}
+
+// Verification before running
+void verification()
+{
+    // Needed things
+    std::vector<std::string> needed
+    {
+        "7z.dll",
+        "curlpp.dll"
+    };
+
+    for (const auto& file : needed)
+    {
+        // The odd one's out
+        std::filesystem::path needed_file = std::filesystem::current_path();
+        needed_file /= file;
+
+        if (!std::filesystem::exists(needed_file))
+            throw_error("Make sure you have 7z.dll and curlpp.dll amongside the program, they are required.");
+    }
+
 }
 
 int main()
 {
     // Title
-    SetConsoleTitleA("Comfortable and automatic mod installer by Nest Rushers.");
+    SetConsoleTitleA("Automatic mod installer");
 
     // First, ask
-    std::cout << "Welcome to the automatic mod downloader!\n\nIt pulls mods directly from Nest Rushers discord and automatically sets them up for your game.\n\nShould I start my work here? (yes): ";
+    std::cout << "Welcome to the automatic mod downloader!\n\nIt pulls mods directly from the download server and automatically sets them up for your game.\n\nShould I start my work here? (yes): ";
     std::string input_proceed;
 
     std::getline(std::cin, input_proceed);
@@ -178,6 +204,9 @@ int main()
     if (!is_answer_positive(input_proceed))
         throw_error("Unfortunately, you disagreed.");
   
+    // Make sure that the user has everything before doing anything
+    verification();
+
     // Do a cleaning before downloading anything
     deep_clean(false);
 
@@ -204,11 +233,18 @@ int main()
         download_server = ini["Config"]["download_server"];
         download_file = ini["Config"]["download_file"];
 
+        // Misc
+        download_copyright = ini["Config"]["download_copyright"];
+
         // Validation
         if (download_server.empty()) throw_error("Missing download_server in config.ini, please make a proper configuration.");
         if (download_file.empty()) throw_error("Missing download_file in config.ini, please make a proper configuration.");
+        if (download_copyright.empty()) throw_error("Missing download_copyright in config.ini, please make a proper configuration.");
     }
     
+    // Ask the user
+    std::cout << std::string("\nDownloading, please wait... (provided by " + download_copyright + ")") << std::endl;
+
     // Download
     get_bonzo();
 
@@ -277,12 +313,16 @@ int main()
 
         std::getline(std::cin, input_numbers);
 
+        // Empty, ahh
+        if (input_numbers.empty())
+            throw_error("Please input something before proceeding, honestly.");
+
         // Remove spaces
         std::remove_if(input_numbers.begin(), input_numbers.end(), isspace);
 
-        // Validate to evade trolls
+        // Validate to evade mistakes
         if (input_numbers.length() > 2 && !strstr(input_numbers.c_str(), ","))
-            throw_error("If you plan to enter something big without commas, that's probably not the right answer.");
+            throw_error("Don't enter your choice without commas, I recommend trying again.");
 
         // Split
         std::vector<std::string> splitted = split(input_numbers, ",");
@@ -439,52 +479,108 @@ int main()
 
         std::cout << "Doing dide_mod setup..." << std::endl;
 
-        // Search for dide_mod and dsound
-        for (const auto& dir : std::filesystem::directory_iterator("out"))
+        // No need to install new one if you already have it
+        bool already_present = false;
+        
+        // 2 hits are success
+        int hits = 0;
+
+        for (const auto& file : std::filesystem::directory_iterator(actual_path))
         {
-            if (std::filesystem::is_directory(dir))
+            std::string name = file.path().filename().string();
+
+            if (name == "dide_mod.ini" || name == "dsound.dll")
+                hits++;
+        }
+
+        // Yes, the user already has it
+        if (hits == 2)
+            already_present = true;
+
+        // Don't make a fresh one
+        if (!already_present)
+        {
+            // Notify
+            std::cout << "Dide mod not present, installing..." << std::endl;
+
+            for (const auto& dir : std::filesystem::directory_iterator("out"))
             {
-                for (const auto& file : std::filesystem::directory_iterator(dir.path()))
+                if (std::filesystem::is_directory(dir))
                 {
-                    std::string name = file.path().filename().string();
-
-                    if (name == "dide_mod.ini" || name == "dsound.dll")
+                    for (const auto& file : std::filesystem::directory_iterator(dir.path()))
                     {
-                        // Not the best code...
-                        if (name == "dide_mod.ini")
-                        {
-                            std::filesystem::path copy_path = std::filesystem::current_path();
-                            copy_path /= "_placeholder.ini";
+                        std::string name = file.path().filename().string();
 
-                            std::filesystem::copy(file, copy_path, std::filesystem::copy_options::overwrite_existing);
+                        if (name == "dide_mod.ini" || name == "dsound.dll")
+                        {
+                            // Not the best code...
+                            if (name == "dide_mod.ini")
+                            {
+                                std::filesystem::path copy_path = std::filesystem::current_path();
+                                copy_path /= "_placeholder.ini";
+
+                                std::filesystem::copy(file, copy_path, std::filesystem::copy_options::overwrite_existing);
+                            }
+                            else
+                                std::filesystem::copy(file, actual_path, std::filesystem::copy_options::overwrite_existing);
                         }
-                        else
-                            std::filesystem::copy(file, actual_path, std::filesystem::copy_options::overwrite_existing);
                     }
                 }
             }
+
+            // INI
+            mINI::INIFile file("_placeholder.ini");
+            mINI::INIStructure ini;
+
+            // Read
+            file.read(ini);
+
+            // Ideally you should already have those in a ready one but meh
+            ini["General"]["EnableMod"] = "1";
+            ini["Features"]["DeveloperMenu"] = "0";
+            ini["Features"]["CustomPak"] = "1";
+
+            // Write
+            std::cout << "Writing datapaks into dide_mod..." << std::endl;
+
+            for (const auto& choice : splitted)
+                ini["CustomPak"][std::string(dw_path.string() + "\\" + paks.at(std::atoi(choice.c_str())).path.filename().string())] = "1";
+
+            file.generate(ini);
+
+            // Replace and delete placeholder
+            std::filesystem::path dide_path = actual_path;
+            dide_path /= "dide_mod.ini";
+
+            std::filesystem::copy("_placeholder.ini", dide_path, std::filesystem::copy_options::overwrite_existing);
         }
+        else
+        {
+            // Dide path
+            std::filesystem::path dide_path = actual_path;
+            dide_path /= "dide_mod.ini";
 
-        // INI
-        mINI::INIFile file("_placeholder.ini");
-        mINI::INIStructure ini;
+            // INI
+            mINI::INIFile file(dide_path.string().c_str());
+            mINI::INIStructure ini;
 
-        // Read
-        file.read(ini);
+            // Read
+            file.read(ini);
 
-        // Write
-        std::cout << "Writing datapaks into dide_mod..." << std::endl;
+            // So there will be no issues
+            ini["General"]["EnableMod"] = "1";
+            ini["Features"]["DeveloperMenu"] = "0";
+            ini["Features"]["CustomPak"] = "1";
 
-        for (const auto& choice : splitted)
-            ini["CustomPak"][std::string(dw_path.string() + "\\" + paks.at(std::atoi(choice.c_str())).path.filename().string())] = "1";
+            // Adding new ones
+            std::cout << "Adding new datapaks into dide_mod..." << std::endl;
 
-        file.generate(ini);
+            for (const auto& choice : splitted)
+                ini["CustomPak"][std::string(dw_path.string() + "\\" + paks.at(std::atoi(choice.c_str())).path.filename().string())] = "1";
 
-        // Replace and delete placeholder
-        std::filesystem::path dide_path = actual_path;
-        dide_path /= "dide_mod.ini";
-
-        std::filesystem::copy("_placeholder.ini", dide_path, std::filesystem::copy_options::overwrite_existing);
+            // Write updates to file
+            file.write(ini);
+        }
 
         // Another deep clean so we don't have our space being eaten
         std::cout << "Cleaning out the mess..." << std::endl;
