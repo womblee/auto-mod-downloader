@@ -5,6 +5,8 @@ Works only for Dying Light, uses the website specified in *config.ini* / default
 
 **You don't have to specify any paths or something like that (steam & epic games path detection). This tool automatically finds your game's directory!**
 
+# Screenshots (Outdated, need to retake)
+
 ![image](https://user-images.githubusercontent.com/52250786/235461989-3c971c1d-7caf-498b-9ff5-e389fd765bf8.png)
 
 ![image](https://user-images.githubusercontent.com/52250786/235461956-0354ff45-1277-4ef8-b970-e833ae887527.png)
