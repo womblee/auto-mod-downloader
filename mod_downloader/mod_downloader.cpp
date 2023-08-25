@@ -13,6 +13,7 @@
 #include <thread>
 #include <filesystem>
 
+#include <nlohmann/json.hpp>
 #include <curl/curl.h>
 #include "bit7z/bitfileextractor.hpp"
 #include "bit7z/bitarchivereader.hpp"
@@ -20,12 +21,15 @@
 #include "ini.hpp"
 
 #define NEWLINE std::cout << std::endl;
-#define DEFAULT_CONFIG "[Config]\ndownload_server=https://www.nlog.us/downloads/\ndownload_file=full_archive.zip\ndownload_copyright=Nest Rushers Discord"
+#define CONFIGURE(ini) ini["General"]["EnableMod"] = "1"; ini["Features"]["DeveloperMenu"] = "0"; ini["Features"]["CustomPak"] = "1";
+#define TRANSFORM(buffer, str) std::wstring little(buffer); std::transform(little.begin(), little.end(), std::back_inserter(str), [](wchar_t c) { return (char)c; }); str = std::string(little.begin(), little.end());
+
+#define DEFAULT_CONFIG "[Config]\ndownload_file=https://www.nlog.us/downloads/full_archive.zip\ndownload_copyright=Nest Rushers Discord"
 
 // Needed
 std::string download_copyright;
-std::string download_server;
 std::string download_file;
+std::string file_name;
 bool download_complete = false;
 
 // Termination
@@ -56,14 +60,16 @@ int throw_error(const char* error, int delay = 3, int clear = 0)
     return -1;
 
 }
+
+// Positive answer
 bool is_answer_positive(std::string answer)
 {
     std::vector <std::string> positive_answers
     {
         "Y",
-        "y",
-        "+",
-        "1",
+            "y",
+            "+",
+            "1",
     };
 
     // Characters found
@@ -91,8 +97,8 @@ std::size_t write_data(void* ptr, std::size_t size, std::size_t nmemb, FILE* str
 // File
 void get_bonzo()
 {
-    // Folder/file
-    std::string site(download_server + download_file);
+    // URL to file
+    std::string site(download_file);
 
     // File variable
     FILE* fp;
@@ -105,8 +111,11 @@ void get_bonzo()
         curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_SSLv3);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
 
+        // Extract file name from URL
+        file_name = download_file.substr(download_file.find_last_of("/") + 1).c_str();
+
         // Open
-        fp = fopen(download_file.c_str(), "wb");
+        fp = fopen(file_name.c_str(), "wb");
         if (fp)
         {
             // Write
@@ -129,7 +138,8 @@ std::vector<std::string> split(std::string s, std::string delimiter)
     std::string token;
     std::vector<std::string> res;
 
-    while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
+    while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos)
+    {
         token = s.substr(pos_start, pos_end - pos_start);
         pos_start = pos_end + delim_len;
         res.push_back(token);
@@ -137,6 +147,15 @@ std::vector<std::string> split(std::string s, std::string delimiter)
 
     res.push_back(s.substr(pos_start));
     return res;
+}
+
+// Function which checks if string ends with a certain string
+bool has_ending(const std::string& full_string, const std::string& ending)
+{
+    if (full_string.length() >= ending.length())
+        return (0 == full_string.compare(full_string.length() - ending.length(), ending.length(), ending));
+    else
+        return false;
 }
 
 // Deep clean
@@ -184,9 +203,8 @@ void verification()
         needed_file /= file;
 
         if (!std::filesystem::exists(needed_file))
-            throw_error("Make sure you have 7z.dll and curlpp.dll amongside the program, they are required.");
+            throw_error("Make sure you have '7z.dll' and 'curlpp.dll' included with the program, they are required.");
     }
-
 }
 
 int main()
@@ -195,15 +213,64 @@ int main()
     SetConsoleTitleA("Automatic mod installer");
 
     // First, ask
-    std::cout << "Welcome to the automatic mod downloader!\n\nIt pulls mods directly from the download server and automatically sets them up for your game.\n\nShould I start my work here? (yes): ";
+    std::cout << "Welcome to the automatic mod downloader!\n\nIt pulls mods directly from the download server and automatically sets them up for your game.\n\nDo you want me to install or uninstall mods? (install / uninstall): ";
     std::string input_proceed;
 
     std::getline(std::cin, input_proceed);
 
-    // Proceed
-    if (!is_answer_positive(input_proceed))
-        throw_error("Unfortunately, you disagreed.");
-  
+    // Finally made this happen, previous versions didn't have this
+    bool deleting = false;
+
+    if (input_proceed.find("install") == std::string::npos) deleting = true;
+    
+    // Decision made, now do the shit
+    if (deleting)
+    {
+        NEWLINE
+
+        // Won't bother to add automatic detection here, so just ask for it
+        std::cout << "Uninstall chosen, enter your Dying Light's installation folder...\n(e.g C:\\Program Files (x86)\\Steam\\steamapps\\common\\Dying Light)\n(e.g C:\\Program Files\\Epic Games\\Dying Light)\n\nEnter (path): " << std::endl;
+        std::string input_path;
+
+        std::getline(std::cin, input_path);
+
+        // DW folder
+        std::string dide_direct = input_path + "\\dide_mod.ini";
+
+        if (!std::filesystem::exists(dide_direct))
+            throw_error("Failed to find dide_mod.ini inside this folder, please input a proper one");
+
+        // Prompt that everything is gonna go into waste
+        NEWLINE
+
+        std::cout << "Do you really want to disable every mod? (yes): " << std::endl;
+        std::string disable_answer;
+
+        std::getline(std::cin, disable_answer);
+
+        // Here we go
+        if (is_answer_positive(disable_answer))
+        {
+            // Update
+            mINI::INIFile file(dide_direct);
+            mINI::INIStructure ini;
+
+            // Read
+            file.read(ini);
+
+            // Disable
+            ini["General"]["EnableMod"] = "0";
+
+            // Write update to file
+            file.write(ini);
+
+            // An error suited this the best!
+            throw_error("Remember, you can always enable the mods again by changing 'EnableMod' to '1' in dide_mod.ini...", 5, 1);
+        }
+        else
+            throw_error("Okay, maybe you'll uninstall the mods another time soon.");
+    }
+
     // Make sure that the user has everything before doing anything
     verification();
 
@@ -230,19 +297,17 @@ int main()
         file.read(ini);
 
         // Server information
-        download_server = ini["Config"]["download_server"];
         download_file = ini["Config"]["download_file"];
 
         // Misc
         download_copyright = ini["Config"]["download_copyright"];
 
         // Validation
-        if (download_server.empty()) throw_error("Missing download_server in config.ini, please make a proper configuration.");
-        if (download_file.empty()) throw_error("Missing download_file in config.ini, please make a proper configuration.");
-        if (download_copyright.empty()) throw_error("Missing download_copyright in config.ini, please make a proper configuration.");
+        if (download_file.empty() || download_copyright.empty())
+            throw_error("Missing 'download_file' or 'download_copyright' in config.ini, please make a proper configuration.");
     }
     
-    // Ask the user
+    // Notify the user
     std::cout << std::string("\nDownloading, please wait... (provided by " + download_copyright + ")") << std::endl;
 
     // Download
@@ -252,9 +317,10 @@ int main()
     if (download_complete)
     {
         // Attempt
-        try {
+        try
+        {
             bit7z::Bit7zLibrary lib{ "7z.dll" };
-            bit7z::BitArchiveReader reader{ lib, download_file, bit7z::BitFormat::Zip };
+            bit7z::BitArchiveReader reader{ lib, file_name, bit7z::BitFormat::Zip };
 
             // Extracting the archive
             reader.extract("out/");
@@ -355,7 +421,7 @@ int main()
         NEWLINE
 
         // Ask about the platform
-        std::cout << "Steam or Other platform? (steam / other): ";
+        std::cout << "Steam or Epic Games? (steam / epic): ";
         std::string input_platform;
 
         std::getline(std::cin, input_platform);
@@ -363,11 +429,10 @@ int main()
         // Choice
         bool steam = false;
 
-        if (input_platform.find("steam") != std::string::npos) steam = true; 
+        if (input_platform.find("steam") != std::string::npos) steam = true;
 
         // Variable, will be used later
         std::string game_path;
-        std::string input_path;
 
         // Steam installation folder detection
         if (steam)
@@ -378,23 +443,17 @@ int main()
             // Find platform path
             HKEY h_key = 0;
 
-            std::cout << "Attempting to find the game's installation path..." << std::endl;
+            std::cout << "[Steam] Attempting to find the game's installation path..." << std::endl;
 
             // Data
             if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"SOFTWARE\\WOW6432Node\\Valve\\Steam", 0, KEY_READ, &h_key) == ERROR_SUCCESS)
             {
-                WCHAR szBuffer[512];
-                DWORD dwBufferSize = sizeof(szBuffer);
+                WCHAR szBuffer[512]; DWORD dwBufferSize = sizeof(szBuffer);
 
                 if (ERROR_SUCCESS == RegQueryValueEx(h_key, L"InstallPath", 0, NULL, (LPBYTE)szBuffer, &dwBufferSize))
                 {
-                    std::wstring little(szBuffer);
-                    std::transform(little.begin(), little.end(), std::back_inserter(steam_path), [](wchar_t c)
-                        {
-                            return (char)c;
-                        });
-
-                    steam_path = std::string(little.begin(), little.end());
+                    // Macros
+                    TRANSFORM(szBuffer, steam_path)
                 }
 
                 RegCloseKey(h_key);
@@ -403,14 +462,16 @@ int main()
             if (!std::filesystem::exists(steam_path))
                 throw_error("Couldn't find your steam's installation path.");
 
-            // Parse .vdf file
+            // Read .vdf file
             std::ifstream main(std::string(steam_path + "\\steamapps\\libraryfolders.vdf"));
 
             if (main.fail())
                 throw_error("Couldn't check your library's metadata, make sure 'libraryfolders.vdf' exists in your steamapps folder.");
 
+            // Open .vdf file
             auto root = tyti::vdf::read(main);
 
+            // Loop through the file
             for (const auto& child : root.childs)
             {
                 for (const auto& mini_child : root.childs[child.first].get()->childs)
@@ -429,33 +490,123 @@ int main()
         }
         else
         {
-            NEWLINE
+            // Epic Games manifest path
+            std::string manifest_path;
 
-            // Ask about the actual path
-            std::cout << "Dying Light's installation folder (ex: C:\\Program Files\\Epic Games\\DyingLight): ";
-            std::getline(std::cin, input_path);
+            // Status, used to decide if we want to use the #2 method
+            int status = 1;
 
-            // Validate
-            if (!std::filesystem::exists(input_path))
-                throw_error("That path unfortunaly doesn't exist, did you specify the path correctly?");
+            // Manifest is inside thos registry keys
+            HKEY h_key = 0;
 
-            // Directory or not?
-            if (!std::filesystem::is_directory(input_path))
-                throw_error("The path you specified is not a directory, please double check if you've entered everything correctly.");
+            std::cout << "[Epic] Attempting to detect game's installation path..." << std::endl;
+
+            // 1st method
+            if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Epic Games\\EOS", 0, KEY_READ, &h_key) == ERROR_SUCCESS)
+            {
+                WCHAR szBuffer[512]; DWORD dwBufferSize = sizeof(szBuffer);
+
+                if (ERROR_SUCCESS == RegQueryValueEx(h_key, L"ModSdkMetadataDir", 0, NULL, (LPBYTE)szBuffer, &dwBufferSize))
+                {
+                    // Macros
+                    TRANSFORM(szBuffer, manifest_path)
+                }
+                else
+                    status = 0; // Failed
+
+                RegCloseKey(h_key);
+            }
+
+            // 2nd method in case the first one failed
+            if (status == 0)
+            {
+                // Null out before doing anything
+                h_key = 0;
+
+                if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Epic Games\\EpicGamesLauncher", 0, KEY_READ, &h_key) == ERROR_SUCCESS)
+                {
+                    WCHAR szBuffer[512]; DWORD dwBufferSize = sizeof(szBuffer);
+
+                    if (ERROR_SUCCESS == RegQueryValueEx(h_key, L"AppDataPath", 0, NULL, (LPBYTE)szBuffer, &dwBufferSize))
+                    {
+                        // Macros
+                        TRANSFORM(szBuffer, manifest_path)
+                    }
+                    else
+                        status = 2; // Failed again
+
+                    RegCloseKey(h_key);
+                }
+            }
+
+            // Thrilling moment when all of our methods failed
+            if (status == 2)
+                throw_error("Couldn't detect the location of Epic Games manifest, please contact the developer."); // This is so sad
+            
+            // Add 'Manifests' to path in case there are none
+            if (has_ending(manifest_path, "\\Data"))
+                manifest_path += "\\Manifests";
+
+            // Validate directory
+            if (!std::filesystem::exists(manifest_path))
+                throw_error("Epic Games manifest directory doesn't exist, please re-install the launcher in an attempt to solve this.");
+
+            // Parse directory for each item
+            for (const auto& entry : std::filesystem::directory_iterator(manifest_path))
+            {
+                // Manifests have the .item extension
+                if (entry.path().extension() == ".item")
+                {
+                    // Attempt to parse
+                    std::ifstream file(entry.path());
+
+                    nlohmann::json data = nlohmann::json::parse(file);
+
+                    // Validate #1
+                    if (data.find("DisplayName") == data.end())
+                        continue;
+
+                    // Most people have 'Dying Light Enhanced Edition' as the game's name, but it's better to include Dying Light only, just in case
+                    std::string display_name = data.at("DisplayName");
+
+                    if (display_name.empty())
+                        continue;
+
+                    if (display_name.find("Dying Light") == std::string::npos)
+                        continue;
+
+                    // Validate #2
+                    if (data.find("InstallLocation") == data.end())
+                        continue;
+
+                    // Installation path
+                    std::string install_location = data.at("InstallLocation");
+
+                    if (install_location.empty())
+                        continue;
+
+                    // Kaboosh, our path is cool
+                    game_path = install_location;
+
+                    // Finish
+                    break;
+                }
+            }
         }
 
-        // Actual game path
-        std::filesystem::path actual_path = steam ? game_path + "\\steamapps\\common\\Dying Light" : input_path;
+        // Actual game path (steam ? steam : epic)
+        std::filesystem::path actual_path = steam ? game_path + "\\steamapps\\common\\Dying Light" : game_path;
 
         if (!std::filesystem::exists(actual_path))
-            throw_error("Unfortunately, Dying Light directory is not available.");
+            throw_error("Unfortunately, the program has failed to find Dying Light's directory.");
 
         // DW path
         std::filesystem::path dw_path = actual_path;
         dw_path /= "DW";
 
+        // Create directory if none present
         if (!std::filesystem::exists(dw_path))
-            throw_error("Unfortunately, Dying Light\\DW directory is not available.");
+            std::filesystem::create_directory(dw_path);
 
         std::cout << "Copying desired datapaks into DW..." << std::endl;
 
@@ -474,7 +625,7 @@ int main()
             std::filesystem::copy(temporary, dw_path, std::filesystem::copy_options::overwrite_existing);
 
             // Output
-            std::cout << std::string("* Copied " + temporary.string() + " into DW folder") << std::endl;
+            std::cout << std::string("\\ Copied " + temporary.string() + " into DW folder") << std::endl;
         }
 
         std::cout << "Doing dide_mod setup..." << std::endl;
@@ -536,9 +687,7 @@ int main()
             file.read(ini);
 
             // Ideally you should already have those in a ready one but meh
-            ini["General"]["EnableMod"] = "1";
-            ini["Features"]["DeveloperMenu"] = "0";
-            ini["Features"]["CustomPak"] = "1";
+            CONFIGURE(ini);
 
             // Write
             std::cout << "Writing datapaks into dide_mod..." << std::endl;
@@ -568,9 +717,7 @@ int main()
             file.read(ini);
 
             // So there will be no issues
-            ini["General"]["EnableMod"] = "1";
-            ini["Features"]["DeveloperMenu"] = "0";
-            ini["Features"]["CustomPak"] = "1";
+            CONFIGURE(ini);
 
             // Adding new ones
             std::cout << "Adding new datapaks into dide_mod..." << std::endl;
@@ -588,7 +735,7 @@ int main()
         deep_clean(true);
 
         // Congratulations
-        throw_error("= Successfull installation! You can now enter the game.", 6);
+        throw_error("@ Successfull installation! You can now enter the game.", 6);
     }
     else
     {
