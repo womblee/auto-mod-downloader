@@ -212,24 +212,43 @@ int main()
     // Title
     SetConsoleTitleA("Automatic mod installer");
 
+    // Choices
+    static const char* choices[] =
+    {
+        "install",
+        "remove"
+    };
+
+    // The two kings
+    std::string inputs = " (" + std::string(choices[0]) + " / " + std::string(choices[1]) + "): ";
+
     // First, ask
-    std::cout << "Welcome to the automatic mod downloader!\n\nIt pulls mods directly from the download server and automatically sets them up for your game.\n\nDo you want me to install or uninstall mods? (install / uninstall): ";
+    std::string to_cout = "Welcome to the automatic mod downloader!\n\nIt pulls mods directly from the download server and automatically sets them up for your game.\n\nDo you want me to install or uninstall mods?";
+    to_cout += inputs;
+    std::cout << to_cout;
     std::string input_proceed;
 
     std::getline(std::cin, input_proceed);
 
-    // Finally made this happen, previous versions didn't have this
-    bool deleting = false;
+    // Verify
+    int verifications = 0;
 
-    if (input_proceed.find("install") == std::string::npos) deleting = true;
-    
+    for (int i = 0; i < sizeof(choices) / sizeof(*choices); i++)
+    {
+        if (input_proceed == choices[i])
+            verifications++;
+    }
+
+    if (verifications == 0)
+        throw_error("You should pick one of the two choices, run the program again...");
+
     // Decision made, now do the shit
-    if (deleting)
+    if (input_proceed == choices[1])
     {
         NEWLINE
 
-        // Won't bother to add automatic detection here, so just ask for it
-        std::cout << "Uninstall chosen, enter your Dying Light's installation folder...\n(e.g C:\\Program Files (x86)\\Steam\\steamapps\\common\\Dying Light)\n(e.g C:\\Program Files\\Epic Games\\Dying Light)\n\nEnter (path): " << std::endl;
+            // Won't bother to add automatic detection here, so just ask for it
+            std::cout << "Uninstall chosen, enter your Dying Light's installation folder...\n(e.g C:\\Program Files (x86)\\Steam\\steamapps\\common\\Dying Light)\n(e.g C:\\Program Files\\Epic Games\\Dying Light)\n\nEnter (path): " << std::endl;
         std::string input_path;
 
         std::getline(std::cin, input_path);
@@ -243,7 +262,7 @@ int main()
         // Prompt that everything is gonna go into waste
         NEWLINE
 
-        std::cout << "Do you really want to disable every mod? (yes): " << std::endl;
+            std::cout << "Do you really want to disable every mod? (yes): " << std::endl;
         std::string disable_answer;
 
         std::getline(std::cin, disable_answer);
@@ -259,7 +278,15 @@ int main()
             file.read(ini);
 
             // Disable
-            ini["General"]["EnableMod"] = "0";
+            for (auto const& it : ini)
+            {
+                // mINI has everything in lowercase, first tried CustomPak, wasted my time...
+                if (it.first == "custompak")
+                {
+                    for (auto const& it2 : it.second)
+                        ini[it.first][it2.first] = "0";
+                }
+            }
 
             // Write update to file
             file.write(ini);
@@ -306,7 +333,7 @@ int main()
         if (download_file.empty() || download_copyright.empty())
             throw_error("Missing 'download_file' or 'download_copyright' in config.ini, please make a proper configuration.");
     }
-    
+
     // Notify the user
     std::cout << std::string("\nDownloading, please wait... (provided by " + download_copyright + ")") << std::endl;
 
@@ -542,7 +569,7 @@ int main()
             // Thrilling moment when all of our methods failed
             if (status == 2)
                 throw_error("Couldn't detect the location of Epic Games manifest, please contact the developer."); // This is so sad
-            
+
             // Add 'Manifests' to path in case there are none
             if (has_ending(manifest_path, "\\Data"))
                 manifest_path += "\\Manifests";
@@ -616,7 +643,7 @@ int main()
             // Already existing?
             std::filesystem::path existing = dw_path;
             existing /= paks.at(std::atoi(choice.c_str())).path.filename();
-            
+
             if (std::filesystem::exists(existing)) std::filesystem::remove(existing);
 
             // Copy from temporary
@@ -632,7 +659,7 @@ int main()
 
         // No need to install new one if you already have it
         bool already_present = false;
-        
+
         // 2 hits are success
         int hits = 0;
 
