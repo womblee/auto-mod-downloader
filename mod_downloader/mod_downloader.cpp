@@ -64,13 +64,7 @@ int throw_error(const char* error, int delay = 3, int clear = 0)
 // Positive answer
 bool is_answer_positive(std::string answer)
 {
-    std::vector <std::string> positive_answers
-    {
-        "Y",
-            "y",
-            "+",
-            "1",
-    };
+    std::vector <std::string> positive_answers { "Y", "y", "+", "1" };
 
     // Characters found
     int hits = 0;
@@ -162,13 +156,7 @@ bool has_ending(const std::string& full_string, const std::string& ending)
 void deep_clean(bool log)
 {
     // Already present?
-    std::vector<std::string> bad_ones
-    {
-        "out",
-        "full_archive.zip",
-        "_placeholder.ini",
-        "dide_mod.ini"
-    };
+    std::vector<std::string> bad_ones { "out", "full_archive.zip", "_placeholder.ini", "dide_mod.ini" };
 
     for (const auto& loser : bad_ones)
     {
@@ -190,11 +178,7 @@ void deep_clean(bool log)
 void verification()
 {
     // Needed things
-    std::vector<std::string> needed
-    {
-        "7z.dll",
-        "curlpp.dll"
-    };
+    std::vector<std::string> needed { "7z.dll", "curlpp.dll" };
 
     for (const auto& file : needed)
     {
@@ -247,8 +231,8 @@ int main()
     {
         NEWLINE
 
-            // Won't bother to add automatic detection here, so just ask for it
-            std::cout << "Uninstall chosen, enter your Dying Light's installation folder...\n(e.g C:\\Program Files (x86)\\Steam\\steamapps\\common\\Dying Light)\n(e.g C:\\Program Files\\Epic Games\\Dying Light)\n\nEnter (path): " << std::endl;
+        // Won't bother to add automatic detection here, so just ask for it
+        std::cout << "Uninstall chosen, enter your Dying Light's installation folder...\n(e.g C:\\Program Files (x86)\\Steam\\steamapps\\common\\Dying Light)\n(e.g C:\\Program Files\\Epic Games\\Dying Light)\n\nEnter (path): " << std::endl;
         std::string input_path;
 
         std::getline(std::cin, input_path);
@@ -262,7 +246,7 @@ int main()
         // Prompt that everything is gonna go into waste
         NEWLINE
 
-            std::cout << "Do you really want to disable every mod? (yes): " << std::endl;
+        std::cout << "Do you really want to disable every mod? (yes): " << std::endl;
         std::string disable_answer;
 
         std::getline(std::cin, disable_answer);
@@ -497,6 +481,9 @@ int main()
 
             // Open .vdf file
             auto root = tyti::vdf::read(main);
+            
+            // Needed for additional verification via appmanifest
+            bool found = false;
 
             // Loop through the file
             for (const auto& child : root.childs)
@@ -509,11 +496,33 @@ int main()
                         if (test.first == "239140")
                         {
                             if (root.childs[child.first].get()->attribs.find("path") != root.childs[child.first].get()->attribs.end())
+                            {
                                 game_path = root.childs[child.first].get()->attribs["path"];
+
+                                found = true;
+                            }
                         }
                     }
                 }
             }
+
+            
+            // This was not required in the first place, but some people had issues, and I had to do it
+            // Attempt to read appmanifest_239140.acf
+            if (found)
+            {
+                std::ifstream main_add(std::string(steam_path + "\\steamapps\\appmanifest_239140.acf"));
+
+                if (main_add.fail())
+                    throw_error("Dying Light's app manifest doesn't exist! Make sure 'appmanifest_239140.acf' exists in your steamapps folder.");
+
+                // Parse installdir
+                auto root_add = tyti::vdf::read(main_add);
+
+                game_path += "\\steamapps\\common\\" + root_add.attribs["installdir"];
+            }
+            else
+                throw_error("Failed to find Dying Light (239140) in your 'libraryfolders.vdf' file which is inside of the steamapps folder.");
         }
         else
         {
@@ -621,14 +630,12 @@ int main()
             }
         }
 
-        // Actual game path (steam ? steam : epic)
-        std::filesystem::path actual_path = steam ? game_path + "\\steamapps\\common\\Dying Light" : game_path;
-
-        if (!std::filesystem::exists(actual_path))
+        // Verify if we can proceed further
+        if (!std::filesystem::exists(game_path))
             throw_error("Unfortunately, the program has failed to find Dying Light's directory.");
 
         // DW path
-        std::filesystem::path dw_path = actual_path;
+        std::filesystem::path dw_path = game_path;
         dw_path /= "DW";
 
         // Create directory if none present
@@ -663,7 +670,7 @@ int main()
         // 2 hits are success
         int hits = 0;
 
-        for (const auto& file : std::filesystem::directory_iterator(actual_path))
+        for (const auto& file : std::filesystem::directory_iterator(game_path))
         {
             std::string name = file.path().filename().string();
 
@@ -700,7 +707,7 @@ int main()
                                 std::filesystem::copy(file, copy_path, std::filesystem::copy_options::overwrite_existing);
                             }
                             else
-                                std::filesystem::copy(file, actual_path, std::filesystem::copy_options::overwrite_existing);
+                                std::filesystem::copy(file, game_path, std::filesystem::copy_options::overwrite_existing);
                         }
                     }
                 }
@@ -725,7 +732,7 @@ int main()
             file.generate(ini);
 
             // Replace and delete placeholder
-            std::filesystem::path dide_path = actual_path;
+            std::filesystem::path dide_path = game_path;
             dide_path /= "dide_mod.ini";
 
             std::filesystem::copy("_placeholder.ini", dide_path, std::filesystem::copy_options::overwrite_existing);
@@ -733,7 +740,7 @@ int main()
         else
         {
             // Dide path
-            std::filesystem::path dide_path = actual_path;
+            std::filesystem::path dide_path = game_path;
             dide_path /= "dide_mod.ini";
 
             // INI
