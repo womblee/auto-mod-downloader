@@ -511,7 +511,7 @@ int main()
             // Attempt to read appmanifest_239140.acf
             if (found)
             {
-                std::ifstream main_add(std::string(steam_path + "\\steamapps\\appmanifest_239140.acf"));
+                std::ifstream main_add(std::string(game_path + "\\steamapps\\appmanifest_239140.acf"));
 
                 if (main_add.fail())
                     throw_error("Dying Light's app manifest doesn't exist! Make sure 'appmanifest_239140.acf' exists in your steamapps folder.");
