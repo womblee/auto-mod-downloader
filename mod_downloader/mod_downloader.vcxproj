@@ -121,6 +121,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>Default</LanguageStandard_C>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -133,47 +134,14 @@
     <ClCompile Include="mod_downloader.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Library Include="bit7z.lib" />
     <Library Include="libcurl_a.lib" />
     <Library Include="libcurl_a_debug.lib" />
+    <Library Include="zip.lib" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bit7z\bit7z.hpp" />
-    <ClInclude Include="bit7z\bit7zlibrary.hpp" />
-    <ClInclude Include="bit7z\bitabstractarchivecreator.hpp" />
-    <ClInclude Include="bit7z\bitabstractarchivehandler.hpp" />
-    <ClInclude Include="bit7z\bitabstractarchiveopener.hpp" />
-    <ClInclude Include="bit7z\bitarchiveeditor.hpp" />
-    <ClInclude Include="bit7z\bitarchiveitem.hpp" />
-    <ClInclude Include="bit7z\bitarchiveiteminfo.hpp" />
-    <ClInclude Include="bit7z\bitarchiveitemoffset.hpp" />
-    <ClInclude Include="bit7z\bitarchivereader.hpp" />
-    <ClInclude Include="bit7z\bitarchivewriter.hpp" />
-    <ClInclude Include="bit7z\bitcompressionlevel.hpp" />
-    <ClInclude Include="bit7z\bitcompressionmethod.hpp" />
-    <ClInclude Include="bit7z\bitcompressor.hpp" />
-    <ClInclude Include="bit7z\bitdefines.hpp" />
-    <ClInclude Include="bit7z\biterror.hpp" />
-    <ClInclude Include="bit7z\bitexception.hpp" />
-    <ClInclude Include="bit7z\bitextractor.hpp" />
-    <ClInclude Include="bit7z\bitfilecompressor.hpp" />
-    <ClInclude Include="bit7z\bitfileextractor.hpp" />
-    <ClInclude Include="bit7z\bitformat.hpp" />
-    <ClInclude Include="bit7z\bitfs.hpp" />
-    <ClInclude Include="bit7z\bitgenericitem.hpp" />
-    <ClInclude Include="bit7z\bitinputarchive.hpp" />
-    <ClInclude Include="bit7z\bititemsvector.hpp" />
-    <ClInclude Include="bit7z\bitmemcompressor.hpp" />
-    <ClInclude Include="bit7z\bitmemextractor.hpp" />
-    <ClInclude Include="bit7z\bitoutputarchive.hpp" />
-    <ClInclude Include="bit7z\bitpropvariant.hpp" />
-    <ClInclude Include="bit7z\bitstreamcompressor.hpp" />
-    <ClInclude Include="bit7z\bitstreamextractor.hpp" />
-    <ClInclude Include="bit7z\bittypes.hpp" />
-    <ClInclude Include="bit7z\bitwindows.hpp" />
     <ClInclude Include="ini.hpp" />
     <ClInclude Include="vdf_parser.hpp" />
   </ItemGroup>
@@ -188,8 +156,10 @@
     <Import Project="..\packages\openssl.1.0.1.21\build\native\openssl.targets" Condition="Exists('..\packages\openssl.1.0.1.21\build\native\openssl.targets')" />
     <Import Project="..\packages\libssh2.1.4.3.1\build\native\libssh2.targets" Condition="Exists('..\packages\libssh2.1.4.3.1\build\native\libssh2.targets')" />
     <Import Project="..\packages\curl.7.30.0.2\build\native\curl.targets" Condition="Exists('..\packages\curl.7.30.0.2\build\native\curl.targets')" />
-    <Import Project="..\packages\curlpp.0.7.3\build\native\curlpp.targets" Condition="Exists('..\packages\curlpp.0.7.3\build\native\curlpp.targets')" />
     <Import Project="..\packages\nlohmann.json.3.11.2\build\native\nlohmann.json.targets" Condition="Exists('..\packages\nlohmann.json.3.11.2\build\native\nlohmann.json.targets')" />
+    <Import Project="..\packages\libzip.redist.1.1.2.7\build\native\libzip.redist.targets" Condition="Exists('..\packages\libzip.redist.1.1.2.7\build\native\libzip.redist.targets')" />
+    <Import Project="..\packages\libzip.1.1.2.7\build\native\libzip.targets" Condition="Exists('..\packages\libzip.1.1.2.7\build\native\libzip.targets')" />
+    <Import Project="..\packages\curlpp.0.7.3.1\build\native\curlpp.targets" Condition="Exists('..\packages\curlpp.0.7.3.1\build\native\curlpp.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
@@ -205,7 +175,9 @@
     <Error Condition="!Exists('..\packages\openssl.1.0.1.21\build\native\openssl.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\openssl.1.0.1.21\build\native\openssl.targets'))" />
     <Error Condition="!Exists('..\packages\libssh2.1.4.3.1\build\native\libssh2.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\libssh2.1.4.3.1\build\native\libssh2.targets'))" />
     <Error Condition="!Exists('..\packages\curl.7.30.0.2\build\native\curl.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\curl.7.30.0.2\build\native\curl.targets'))" />
-    <Error Condition="!Exists('..\packages\curlpp.0.7.3\build\native\curlpp.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\curlpp.0.7.3\build\native\curlpp.targets'))" />
     <Error Condition="!Exists('..\packages\nlohmann.json.3.11.2\build\native\nlohmann.json.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\nlohmann.json.3.11.2\build\native\nlohmann.json.targets'))" />
+    <Error Condition="!Exists('..\packages\libzip.redist.1.1.2.7\build\native\libzip.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\libzip.redist.1.1.2.7\build\native\libzip.redist.targets'))" />
+    <Error Condition="!Exists('..\packages\libzip.1.1.2.7\build\native\libzip.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\libzip.1.1.2.7\build\native\libzip.targets'))" />
+    <Error Condition="!Exists('..\packages\curlpp.0.7.3.1\build\native\curlpp.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\curlpp.0.7.3.1\build\native\curlpp.targets'))" />
   </Target>
 </Project>
