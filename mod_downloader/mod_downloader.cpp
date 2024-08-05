@@ -40,8 +40,8 @@ std::string download_copyright;
 std::string download_file;
 std::string file_name;
 
-bool download_complete = false;
-double download_progress = 0.0;
+std::atomic<double> download_progress(0.0);
+std::atomic<bool> download_complete(false);
 
 // Termination
 int terminate_process(int delay)
@@ -183,8 +183,7 @@ size_t write_data(void* ptr, size_t size, size_t nmemb, FILE* stream)
 int progress_callback(void* clientp, double dltotal, double dlnow, double ultotal, double ulnow)
 {
     if (dltotal > 0)
-        download_progress = dlnow / dltotal * 100.0;
-
+        download_progress = static_cast<double>(dlnow) / static_cast<double>(dltotal) * 100.0;
     return 0;
 }
 
@@ -193,17 +192,17 @@ void display_progress()
 {
     int width = 50;
     std::cout << "[";
-
     int pos = static_cast<int>(width * download_progress / 100.0);
-    for (int i = 0; i < width; ++i) {
+    for (int i = 0; i < width; ++i)
+    {
         if (i < pos) std::cout << "=";
         else if (i == pos) std::cout << ">";
         else std::cout << " ";
     }
-
-    std::cout << "] " << static_cast<int>(download_progress) << "%\r";
+    std::cout << "] " << std::fixed << std::setprecision(1) << download_progress << "%\r";
     std::cout.flush();
 }
+
 
 bool get_bonzo(const std::string& download_file)
 {
@@ -222,7 +221,6 @@ bool get_bonzo(const std::string& download_file)
     {
         std::cerr << "Failed to open file for writing" << std::endl;
         curl_easy_cleanup(curl);
-
         return false;
     }
 
@@ -233,7 +231,6 @@ bool get_bonzo(const std::string& download_file)
     curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, progress_callback);
 
     CURLcode res = curl_easy_perform(curl);
-
     fclose(fp);
     curl_easy_cleanup(curl);
 
@@ -243,6 +240,7 @@ bool get_bonzo(const std::string& download_file)
         return false;
     }
 
+    download_progress = 100.0; // Ensure 100% at completion
     download_complete = true;
     return true;
 }
@@ -360,7 +358,7 @@ int main()
         std::getline(std::cin, input_path);
 
         // Ask about mod usage method
-        std::cout << "Are you using DLML or Regular Online mod usage? (dlml/regular): ";
+        std::cout << "Are you using DLML or Regular Online mod usage? (dlml / regular): ";
         std::string mod_usage_method;
         std::getline(std::cin, mod_usage_method);
 
@@ -491,6 +489,7 @@ int main()
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
+    display_progress(); // Display final progress
     download_thread.join();
 
     std::cout << std::endl << "Download complete!" << std::endl;
@@ -550,7 +549,7 @@ int main()
         std::cout << std::string(std::to_string(pak.num) + ": " + pak.path.filename().string()) << std::endl;
 
     // Input which one he wants
-    std::cout << "Please enter wanted mods (separate by commas for multiple numbers): ";
+    std::cout << "Please enter wanted mods (separate by commas ',' for multiple mods): ";
     std::string input_numbers;
 
     std::getline(std::cin, input_numbers);
@@ -619,7 +618,7 @@ int main()
         // Find platform path
         HKEY h_key = 0;
 
-        std::cout << "[Steam] Attempting to find the game's installation path..." << std::endl;
+        std::cout << "Finding the game's installation path..." << std::endl;
 
         // Data
         if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"SOFTWARE\\WOW6432Node\\Valve\\Steam", 0, KEY_READ, &h_key) == ERROR_SUCCESS)
@@ -650,24 +649,28 @@ int main()
         // Loop through the file
         for (const auto& child : root.childs)
         {
-            for (const auto& mini_child : root.childs[child.first].get()->childs)
-            {
-                for (const auto& test : mini_child.second.get()->attribs)
-                {
-                    // Dying Light's ID
-                    if (test.first == "239140")
-                    {
-                        if (root.childs[child.first].get()->attribs.find("path") != root.childs[child.first].get()->attribs.end())
-                        {
-                            game_path = root.childs[child.first].get()->attribs["path"];
+            const auto& folder = child.second;
 
-                            found = true;
-                        }
+            // Check if this folder has an "apps" child
+            auto apps_it = folder->childs.find("apps");
+            if (apps_it != folder->childs.end())
+            {
+                const auto& apps = apps_it->second;
+
+                // Check if Dying Light's ID (239140) is in the apps
+                if (apps->attribs.find("239140") != apps->attribs.end())
+                {
+                    // Get the path for this folder
+                    auto path_it = folder->attribs.find("path");
+                    if (path_it != folder->attribs.end())
+                    {
+                        game_path = path_it->second;
+                        found = true;
+                        break; // We found the game, no need to continue searching
                     }
                 }
             }
         }
-
 
         // This was not required in the first place, but some people had issues, and I had to do it
         // Attempt to read appmanifest_239140.acf
@@ -697,7 +700,7 @@ int main()
         // Manifest is inside thos registry keys
         HKEY h_key = 0;
 
-        std::cout << "[Epic] Attempting to detect game's installation path..." << std::endl;
+        std::cout << "Detecting the location of the installation manifest..." << std::endl;
 
         // 1st method
         if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Epic Games\\EOS", 0, KEY_READ, &h_key) == ERROR_SUCCESS)
@@ -741,7 +744,7 @@ int main()
 
         // Validate directory
         if (!std::filesystem::exists(manifest_path))
-            throw_error("Epic Games manifest directory doesn't exist, please re-install the launcher in an attempt to solve this.");
+            throw_error("Epic Games manifest directory doesn't exist, please reinstall the launcher in an attempt to solve this.");
 
         // Parse directory for each item
         for (const auto& entry : std::filesystem::directory_iterator(manifest_path))
@@ -994,10 +997,8 @@ int main()
     }
 
     // Another deep clean so we don't have our space being eaten
-    std::cout << "Cleaning out the mess..." << std::endl;
-
     deep_clean(true);
 
     // Congratulations
-    throw_error("@ Successfull installation! You can now enter the game.", 6);
+    throw_error("\nSuccessfull installation! You can now enter the game.", 6);
 }
