@@ -44,14 +44,14 @@ std::atomic<double> download_progress(0.0);
 std::atomic<bool> download_complete(false);
 
 // Termination
-int terminate_process(int delay)
+void terminate_process(int delay)
 {
     // Delay
     if (delay > 0)
         std::this_thread::sleep_for(std::chrono::seconds(delay));
 
     // Terminate
-    return TerminateProcess(GetCurrentProcess(), 0);
+    std::exit(0);
 }
 
 // Custom error function
